@@ -375,7 +375,14 @@ sub loadData()
 			}
 			else
 			{
-				$y = $tokens[2] * $scalefac;
+				if ($scalefac == 1)
+				{
+					$y = $tokens[2];
+				}
+				else
+				{
+					$y = -1 * $tokens[2] * $scalefac;
+				}
 			}
 			
 			if (abs($tokens[3]) < .01)
@@ -473,20 +480,68 @@ sub startOutput()
 
 	print OUTFILE "// created from $file.zip with objZip2Header.pl\n\n";
 	
-	print OUTFILE "typedef struct{ \n";
-	print OUTFILE "	float position[3]; \n";
-	print OUTFILE "	float color[4]; \n";
-	print OUTFILE "	//float texCoord[2]; \n";
-	print OUTFILE "}Vertex; \n\n";
+	print OUTFILE "typedef struct {\n";
+    print OUTFILE "	GLfloat x;\n";
+    print OUTFILE "	GLfloat y;\n";
+    print OUTFILE "	GLfloat z;\n";
+    print OUTFILE "}Point3D;\n\n";
+
+    print OUTFILE "static inline Point3D Point3DMake(CGFloat with_x, CGFloat with_y, CGFloat with_z)\n";
+    print OUTFILE "{\n";
+    print OUTFILE "	Point3D ret;\n";
+    print OUTFILE "	ret.x = with_x;\n";
+    print OUTFILE "	ret.y = with_y;\n";
+    print OUTFILE "	ret.z = with_z; \n";   
+    print OUTFILE "	return ret;\n";
+    print OUTFILE "}\n\n";
+
+    print OUTFILE "typedef struct {\n";
+    print OUTFILE "	GLfloat r;\n";
+    print OUTFILE "	GLfloat g;\n";
+    print OUTFILE "	GLfloat b;\n";
+    print OUTFILE "	GLfloat a;\n";
+    print OUTFILE "}RGBAColor;\n\n";
+
+    print OUTFILE "static inline RGBAColor RGBAColorMake(CGFloat with_red, CGFloat with_blue, CGFloat with_green, GLfloat with_alpha)\n";
+    print OUTFILE "{\n";
+    print OUTFILE "	RGBAColor ret;\n";
+    print OUTFILE "	ret.r = with_red;\n";
+    print OUTFILE "	ret.g = with_green;\n";
+    print OUTFILE "	ret.b = with_blue;\n";
+    print OUTFILE "	ret.a = with_alpha;\n";
+    print OUTFILE "	return ret;\n";
+    print OUTFILE "}\n\n";
+
+    print OUTFILE "typedef struct { \n";
+	print OUTFILE "	Point3D position; \n";
+	print OUTFILE "	RGBAColor color;\n"; 
+    print OUTFILE "}Vertex;\n\n";
+
+    print OUTFILE "static inline Vertex VertexMake(CGFloat with_x, CGFloat with_y, CGFloat red, CGFloat green, CGFloat blue, CGFloat alpha)\n";
+    print OUTFILE "{\n";
+    print OUTFILE "	Vertex ret;\n";
+    print OUTFILE "	ret.position.x = with_x;\n";
+    print OUTFILE "	ret.position.y = with_y;\n";
+    print OUTFILE "	ret.position.z = 0.0f;\n";
+    print OUTFILE "	ret.color.r = red;\n";
+    print OUTFILE "	ret.color.g = green;\n";
+    print OUTFILE "	ret.color.b = blue;\n";
+    print OUTFILE "	ret.color.a = alpha;\n";
+    print OUTFILE "	return ret;\n";
+    print OUTFILE "}\n\n";
+
+    print OUTFILE "typedef enum _ClefType {\n";
+    print OUTFILE "	TREBLECLEF,\n";
+    print OUTFILE "	BASSCLEF\n";
+    print OUTFILE "} ClefType;\n\n";
 }
 	
-
 sub writeObjData()
 {	
-	# needed constant for glDrawArrays
+	# needed static constant for glDrawArrays
 	print OUTFILE "#pragma mark - $object\n\n";
-	print OUTFILE "GLuint ".$object."NumVertices = ".($numFaces).";\n\n";
-	
+	print OUTFILE "static const GLuint ".$object."NumVertices = ".($numVertices ).";\n\n";
+	print OUTFILE "static const GLuint ".$object."NumIndices = ".($numIndices ).";\n\n";
 	# write center
 	#print OUTFILE "GLfloat ".$object."Center[] = {\n";
 	#print OUTFILE "		$xcen, $ycen, $zcen\n";
@@ -494,8 +549,8 @@ sub writeObjData()
 	
 	# write verts
 	print OUTFILE "#pragma mark Vertices\n\n";
-	print OUTFILE "const Vertex ".$object."Vertices[] = {\n"; 
-	#print OUTFILE "const Vertex Vertices[] = {\n";
+	print OUTFILE "static const Vertex ".$object."Vertices[] = {\n"; 
+	#print OUTFILE "static const Vertex Vertices[] = {\n";
 	for( $j = 0; $j < $numVertices; $j++)
 	{
 		print OUTFILE "	{{$xcoords[$j], $ycoords[$j], $zcoords[$j]}, {0,0,0,1}},\n";
@@ -504,11 +559,25 @@ sub writeObjData()
 	
 	# write indices
 	print OUTFILE "#pragma mark Indices\n\n";
-	print OUTFILE "const GLuint ".$object."Indices[] = {\n"; 
-	#print OUTFILE "const GLuint Indices[] = {\n";
+	print OUTFILE "static const GLuint ".$object."Indices[] = {\n"; 
+	#print OUTFILE "static const GLuint Indices[] = {\n";
 	for( $j = 0; $j < $numFaces; $j++)
 	{	
-		print OUTFILE "	$va_idx[$j], $vb_idx[$j], $vc_idx[$j],\n";
+		if($va_idx[$j] != -1 && $va_idx[$j] != -1 && $vc_idx[$j] != -1) 
+		{
+			print OUTFILE "	$va_idx[$j], $vb_idx[$j], $vc_idx[$j],\n";
+		}
+		else
+		{
+			if($vb_idx[$j] == -1 && $vc_idx[$j] == -1) 
+			{
+				print OUTFILE "	$va_idx[$j],\n";
+			}
+			else #if ($vc_idx[$j] == -1)
+			{
+				print OUTFILE "	$va_idx[$j], $vb_idx[$j], \n";
+			}
+		}
 	}
 	print OUTFILE "};\n\n";
 	
@@ -516,7 +585,7 @@ sub writeObjData()
 	
 	# write normals
 	print OUTFILE "#pragma mark Normals\n\n";
-	print OUTFILE "const GLfloat ".$object."Normals[] = {\n"; 
+	print OUTFILE "static const GLfloat ".$object."Normals[] = {\n"; 
 	for( $j = 0; $j < $numVertices; $j++)
 	{
 		print OUTFILE "	$xcoords[$j], $ycoords[$j], $zcoords[$j],\n";
