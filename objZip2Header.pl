@@ -11,20 +11,15 @@
 
 =head1 DESCRIPTION
 
-This script expects and OBJ file consisting of vertices,
-texture coords and normals. Each face must contain
-exactly 3 vertices. The texture coords are two dimonsional.
+This script expects a zip file containing one or more .obj files.
 
 The resulting .H file offers three float arrays to be rendered
 with glDrawArrays.
 
-=head1 AUTHOR
-
-Heiko Behrens (http://www.HeikoBehrens.net)
-
 =head1 VERSION
 
-25th August 2009 (initial version)
+1.0 
+last update 3/9/12
 
 =head1 COPYRIGHT
 
@@ -101,6 +96,7 @@ use Archive::Zip;
 
 # -----------------------------------------------------------------
 # Main Program
+# This script expects a zip file containing one or more .obj files.
 # -----------------------------------------------------------------
 unZipFiles();
 
@@ -206,6 +202,7 @@ sub unZipFiles()
 	foreach (@members) 
 	{
 	    $zip->extractMember("$_", "Object Files/$_");
+	    print "$_\n";
 	}
 	print "Extraction Complete!\n";
 }
@@ -219,68 +216,69 @@ sub calcSizeAndCenter()
 
 	$numVertices = 0;
 	
-	my (
-		$xsum, $ysum, $zsum, 
-		$xmin, $ymin, $zmin,
-		$xmax, $ymax, $zmax,
-		);
+	$xsum = 0;
+    $ysum = 0; 
+    $zsum = 0;
+    $xmin = 0;
+    $ymin = 0;
+    $zmin = 0; 
+    $xmax = 0; 
+    $ymax = 0; 
+    $zmax = 0;
 
 	while ( $line = <INFILE> ) 
 	{
-	  chop $line;
+        chop $line;
 	  
-	  if ($line =~ /v\s+.*/)
-	  {
+        if ($line =~ /v\s+.*/)
+        {
 	  
-	    $numVertices++;
-	    @tokens = split(' ', $line);
+            $numVertices++;
+            @tokens = split(' ', $line);
 	    
-	    $xsum += $tokens[1];
-	    $ysum += $tokens[2];
-	    $zsum += $tokens[3];
+            $xsum += $tokens[1] * $scalefac;
+            $ysum += $tokens[2] * $scalefac;
+            $zsum += $tokens[3] * $scalefac;
 	    
-	    if ( $numVertices == 1 )
-	    {
-	      $xmin = $tokens[1];
-	      $xmax = $tokens[1];
-	      $ymin = $tokens[2];
-	      $ymax = $tokens[2];
-	      $zmin = $tokens[3];
-	      $zmax = $tokens[3];
-	    }
-	    else
-	    {   
-	        if ($tokens[1] < $xmin)
-	      {
-	        $xmin = $tokens[1];
-	      }
-	      elsif ($tokens[1] > $xmax)
-	      {
-	        $xmax = $tokens[1];
-	      }
-	    
-	      if ($tokens[2] < $ymin) 
-	      {
-	        $ymin = $tokens[2];
-	      }
-	      elsif ($tokens[2] > $ymax) 
-	      {
-	        $ymax = $tokens[2];
-	      }
-	    
-	      if ($tokens[3] < $zmin) 
-	      {
-	        $zmin = $tokens[3];
-	      }
-	      elsif ($tokens[3] > $zmax) 
-	      {
-	        $zmax = $tokens[3];
-	      }
-	    
-	    }
-	 
-	  }
-	 
+            if ( $numVertices == 1 )
+            {
+                $xmin = $tokens[1] * $scalefac;
+                $xmax = $tokens[1] * $scalefac;
+                $ymin = $tokens[2] * $scalefac;
+                $ymax = $tokens[2] * $scalefac;
+                $zmin = $tokens[3] * $scalefac;
+                $zmax = $tokens[3] * $scalefac;
+            }
+            else
+            {   
+                if ($tokens[1] < $xmin)
+                {
+                    $xmin = $tokens[1] * $scalefac;
+                }
+                elsif ($tokens[1] > $xmax)
+                {
+                    $xmax = $tokens[1] * $scalefac;
+                }
+            
+                if ($tokens[2] < $ymin) 
+                {
+                    $ymin = $tokens[2] * $scalefac;
+                }
+                elsif ($tokens[2] > $ymax) 
+                {
+                    $ymax = $tokens[2] * $scalefac;
+                }
+            
+                if ($tokens[3] < $zmin) 
+                {
+                    $zmin = $tokens[3] * $scalefac;
+                }
+                elsif ($tokens[3] > $zmax) 
+                {
+                    $zmax = $tokens[3] * $scalefac;
+                }
+            }
+        }
 	}
 	close INFILE;
 	
@@ -292,7 +290,8 @@ sub calcSizeAndCenter()
 	#}
 	
 	#  Calculate the scale factor
-	unless(defined($scalefac)) {
+	unless(defined($scalefac)) 
+    {
 		my $xdiff = ($xmax - $xmin);
 		my $ydiff = ($ymax - $ymin);
 		my $zdiff = ($zmax - $zmin);
@@ -323,6 +322,8 @@ sub printStatistics()
 	print "Scale by       : $scalefac\n";
 	print "Vertices       : $numVertices\n";
 	print "Indices        : $numIndices\n";
+    print "xMin           : $xmin\n";
+    print "xMax           : $xmax\n";
 	print "Texture Coords : $numTexture\n";
 	print "Normals        : $numNormals\n";
 	print "----------------\n";
@@ -348,6 +349,8 @@ sub loadData()
 	$numIndices = 0;
 	$numTexture = 0;
 	$numNormals = 0;
+    $xleft = undef;
+    $xright = undef;
 	
 	open ( INFILE, "<$objFilename" ) || die "Can't find .obj file: $objFilename...exiting \n";
 	
@@ -393,7 +396,23 @@ sub loadData()
 	    	{
 	    		$z = $tokens[3] * $scalefac;   
 	    	}
-	    	
+            
+            if ($object eq "notehead_filled" || $object eq "notehead_half")
+            {
+                if ($x < $xleft)
+                {
+                    $xleft = $x;
+                    $yleft = $y;
+                    $zleft = $z;
+                }
+                elsif ($x > $xright)
+                {
+                    $xright = $x;
+                    $yright = $y;
+                    $zright = $z;
+                }   
+            }
+            
 	    	$xcoords[$numVertices] = $x; 
 	    	$ycoords[$numVertices] = $y;
 	    	$zcoords[$numVertices] = $z;
@@ -444,7 +463,7 @@ sub loadData()
 		
 		$numIndices = 3*$numFaces
 	}
-	
+    
 	close INFILE;
 }
 
@@ -517,12 +536,12 @@ sub startOutput()
 	print OUTFILE "	RGBAColor color;\n"; 
     print OUTFILE "}Vertex;\n\n";
 
-    print OUTFILE "static inline Vertex VertexMake(CGFloat with_x, CGFloat with_y, CGFloat red, CGFloat green, CGFloat blue, CGFloat alpha)\n";
+    print OUTFILE "static inline Vertex VertexMake(CGFloat with_x, CGFloat with_y, CGFloat with_z, CGFloat red, CGFloat green, CGFloat blue, CGFloat alpha)\n";
     print OUTFILE "{\n";
     print OUTFILE "	Vertex ret;\n";
     print OUTFILE "	ret.position.x = with_x;\n";
     print OUTFILE "	ret.position.y = with_y;\n";
-    print OUTFILE "	ret.position.z = 0.0f;\n";
+    print OUTFILE "	ret.position.z = with_z;\n";
     print OUTFILE "	ret.color.r = red;\n";
     print OUTFILE "	ret.color.g = green;\n";
     print OUTFILE "	ret.color.b = blue;\n";
@@ -534,14 +553,42 @@ sub startOutput()
     print OUTFILE "	TREBLECLEF,\n";
     print OUTFILE "	BASSCLEF\n";
     print OUTFILE "} ClefType;\n\n";
+    
+    print OUTFILE "typedef enum _NoteheadType {\n";
+    print OUTFILE "	FILLED,\n";
+    print OUTFILE "	HALF,\n";
+    print OUTFILE "	WHOLE\n";
+	print OUTFILE "} NoteHeadType;\n\n";
+    
+    print OUTFILE "typedef enum _FlagType {\n";
+    print OUTFILE "    EIGHTH,\n";
+    print OUTFILE "    SIXTEENTH,\n";
+    print OUTFILE "    THIRTYSECOND,\n";
+    print OUTFILE "    SIXTYFORTH\n";
+    print OUTFILE "} FlagType;\n\n";
+    
+    print OUTFILE "typedef enum _StemDirection {\n";
+    print OUTFILE "    DOWN,\n";
+    print OUTFILE "    UP\n";
+    print OUTFILE "    NONE\n";
+    print OUTFILE "} StemDirection;\n\n";
 }
 	
 sub writeObjData()
 {	
 	# needed static constant for glDrawArrays
 	print OUTFILE "#pragma mark - $object\n\n";
+    
+    if ($object eq "notehead_filled" || $object eq "notehead_half")
+    {
+        # add xmin and xmax for noteheads
+        print OUTFILE "static const Point3D ".$object."OffsetLeft = {".($xleft).", ".($yleft).", ".($zleft )."};\n\n";
+        print OUTFILE "static const Point3D ".$object."OffsetRight = {".($xright).", ".($yright).", ".($zright )."};\n\n";
+    }
+    
 	print OUTFILE "static const GLuint ".$object."NumVertices = ".($numVertices ).";\n\n";
 	print OUTFILE "static const GLuint ".$object."NumIndices = ".($numIndices ).";\n\n";
+
 	# write center
 	#print OUTFILE "GLfloat ".$object."Center[] = {\n";
 	#print OUTFILE "		$xcen, $ycen, $zcen\n";
