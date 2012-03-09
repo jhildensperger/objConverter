@@ -150,7 +150,7 @@ sub handleArguments()
 	
 	if($noscale) 
 	{
-		$scalefac = 50;
+		$scalefac = $ARGV[0];
 	}
 	
 	if($nomove) 
@@ -186,9 +186,9 @@ sub handleArguments()
 
 sub unZipFiles()
 {
-	if($#ARGV == 0) 
+	if($#ARGV == 1) 
 	{
-		my ($zipFile, $zipDir, $zipExt) = fileparse($ARGV[0], qr/\.[^.]*/);
+		my ($zipFile, $zipDir, $zipExt) = fileparse($ARGV[1], qr/\.[^.]*/);
 		$zipFileName = $zipDir . $zipFile . $zipExt;
 	}
 	# extract a zip file
@@ -319,11 +319,9 @@ sub printStatistics()
 	print "Output file    : $headerFilename\n";
 	print "Object name    : $object\n";
 	#print "Center         : <$xcen, $ycen, $zcen>\n";
-	print "Scale by       : $scalefac\n";
+	print "Scale factor   : $scalefac\n";
 	print "Vertices       : $numVertices\n";
 	print "Indices        : $numIndices\n";
-    print "xMin           : $xmin\n";
-    print "xMax           : $xmax\n";
 	print "Texture Coords : $numTexture\n";
 	print "Normals        : $numNormals\n";
 	print "----------------\n";
@@ -492,7 +490,7 @@ sub normalizeNormals()
 
 sub startOutput()
 {
-	my ($file, $dir, $ext) = fileparse($ARGV[0], qr/\.[^.]*/);
+	my ($file, $dir, $ext) = fileparse($ARGV[1], qr/\.[^.]*/);
 	$headerFilename = $dir . $file . ".h";
 
 	open ( OUTFILE, ">$headerFilename" ) || die "Can't create file header: $headerFilename -> exiting\n";
