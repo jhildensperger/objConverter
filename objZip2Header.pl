@@ -103,7 +103,7 @@ unZipFiles();
 my $objDir = dirname(dirname($0)) . "/Object Files/";
 opendir(DIR, $objDir);
 
-startOutput();
+#startOutput();
 
 while (my $objFile = readdir(DIR)) 
 {	
@@ -114,12 +114,13 @@ while (my $objFile = readdir(DIR))
 		loadData();
 
 		printStatistics();
-		writeObjData();
+		writeHeaderObjData();
+		writeImplementationObjData();
 	}
 }
 
 #end writing to file
-endOutput();
+#endOutput();
 
 #delete the .obj files
 $files_deleted = rmtree($objDir);
@@ -488,94 +489,20 @@ sub normalizeNormals()
 	}
 }
 
-sub startOutput()
-{
+sub writeHeaderObjData()
+{	
 	my ($file, $dir, $ext) = fileparse($ARGV[1], qr/\.[^.]*/);
-	$headerFilename = $dir . $file . ".h";
+	$headerFilename = $dir . $object . "SymbolGlyph.h";
 
 	open ( OUTFILE, ">$headerFilename" ) || die "Can't create file header: $headerFilename -> exiting\n";
 
 	print OUTFILE "// created from $file.zip with objZip2Header.pl\n\n";
 	
-	print OUTFILE "typedef struct {\n";
-    print OUTFILE "	GLfloat x;\n";
-    print OUTFILE "	GLfloat y;\n";
-    print OUTFILE "	GLfloat z;\n";
-    print OUTFILE "}Point3D;\n\n";
+	print OUTFILE "#import \"IndexedTrianglesGlyph.h\"\n";
 
-    print OUTFILE "static inline Point3D Point3DMake(CGFloat with_x, CGFloat with_y, CGFloat with_z)\n";
-    print OUTFILE "{\n";
-    print OUTFILE "	Point3D ret;\n";
-    print OUTFILE "	ret.x = with_x;\n";
-    print OUTFILE "	ret.y = with_y;\n";
-    print OUTFILE "	ret.z = with_z; \n";   
-    print OUTFILE "	return ret;\n";
-    print OUTFILE "}\n\n";
-
-    print OUTFILE "typedef struct {\n";
-    print OUTFILE "	GLfloat r;\n";
-    print OUTFILE "	GLfloat g;\n";
-    print OUTFILE "	GLfloat b;\n";
-    print OUTFILE "	GLfloat a;\n";
-    print OUTFILE "}RGBAColor;\n\n";
-
-    print OUTFILE "static inline RGBAColor RGBAColorMake(CGFloat with_red, CGFloat with_blue, CGFloat with_green, GLfloat with_alpha)\n";
-    print OUTFILE "{\n";
-    print OUTFILE "	RGBAColor ret;\n";
-    print OUTFILE "	ret.r = with_red;\n";
-    print OUTFILE "	ret.g = with_green;\n";
-    print OUTFILE "	ret.b = with_blue;\n";
-    print OUTFILE "	ret.a = with_alpha;\n";
-    print OUTFILE "	return ret;\n";
-    print OUTFILE "}\n\n";
-
-    print OUTFILE "typedef struct { \n";
-	print OUTFILE "	Point3D position; \n";
-	print OUTFILE "	RGBAColor color;\n"; 
-    print OUTFILE "}Vertex;\n\n";
-
-    print OUTFILE "static inline Vertex VertexMake(CGFloat with_x, CGFloat with_y, CGFloat with_z, CGFloat red, CGFloat green, CGFloat blue, CGFloat alpha)\n";
-    print OUTFILE "{\n";
-    print OUTFILE "	Vertex ret;\n";
-    print OUTFILE "	ret.position.x = with_x;\n";
-    print OUTFILE "	ret.position.y = with_y;\n";
-    print OUTFILE "	ret.position.z = with_z;\n";
-    print OUTFILE "	ret.color.r = red;\n";
-    print OUTFILE "	ret.color.g = green;\n";
-    print OUTFILE "	ret.color.b = blue;\n";
-    print OUTFILE "	ret.color.a = alpha;\n";
-    print OUTFILE "	return ret;\n";
-    print OUTFILE "}\n\n";
-
-    print OUTFILE "typedef enum _ClefType {\n";
-    print OUTFILE "	TREBLECLEF,\n";
-    print OUTFILE "	BASSCLEF\n";
-    print OUTFILE "} ClefType;\n\n";
-    
-    print OUTFILE "typedef enum _NoteheadType {\n";
-    print OUTFILE "	FILLED,\n";
-    print OUTFILE "	HALF,\n";
-    print OUTFILE "	WHOLE\n";
-	print OUTFILE "} NoteHeadType;\n\n";
-    
-    print OUTFILE "typedef enum _FlagType {\n";
-    print OUTFILE "    EIGHTH,\n";
-    print OUTFILE "    SIXTEENTH,\n";
-    print OUTFILE "    THIRTYSECOND,\n";
-    print OUTFILE "    SIXTYFORTH\n";
-    print OUTFILE "} FlagType;\n\n";
-    
-    print OUTFILE "typedef enum _StemDirection {\n";
-    print OUTFILE "    DOWN,\n";
-    print OUTFILE "    UP\n";
-    print OUTFILE "    NONE\n";
-    print OUTFILE "} StemDirection;\n\n";
-}
-	
-sub writeObjData()
-{	
+	print OUTFILE "IndexedTrianglesGlyph* get".$object."IndexedTrianglesGlyph()\n\n";
 	# needed static constant for glDrawArrays
-	print OUTFILE "#pragma mark - $object\n\n";
+	#print OUTFILE "#pragma mark - $object\n\n";
     
     if ($object eq "notehead_filled" || $object eq "notehead_half")
     {
@@ -594,11 +521,11 @@ sub writeObjData()
 	
 	# write verts
 	print OUTFILE "#pragma mark Vertices\n\n";
-	print OUTFILE "static const Vertex ".$object."Vertices[] = {\n"; 
+	print OUTFILE "static const Vertex2f ".$object."Vertices[] = {\n"; 
 	#print OUTFILE "static const Vertex Vertices[] = {\n";
 	for( $j = 0; $j < $numVertices; $j++)
 	{
-		print OUTFILE "	{{$xcoords[$j], $ycoords[$j], $zcoords[$j]}, {0,0,0,1}},\n";
+		print OUTFILE "	{$xcoords[$j], $ycoords[$j]},\n";
 	}
 	print OUTFILE "};\n\n";
 	
@@ -629,13 +556,13 @@ sub writeObjData()
 	#not currently set up for normals or textures
 	
 	# write normals
-	print OUTFILE "#pragma mark Normals\n\n";
-	print OUTFILE "static const GLfloat ".$object."Normals[] = {\n"; 
-	for( $j = 0; $j < $numVertices; $j++)
-	{
-		print OUTFILE "	$xcoords[$j], $ycoords[$j], $zcoords[$j],\n";
-	}
-	print OUTFILE "};\n\n";
+	#print OUTFILE "#pragma mark Normals\n\n";
+	#print OUTFILE "static const GLfloat ".$object."Normals[] = {\n"; 
+	#for( $j = 0; $j < $numVertices; $j++)
+	#{
+	#	print OUTFILE "	$xcoords[$j], $ycoords[$j],\n";
+	#}
+	#print OUTFILE "};\n\n";
 	
 	#if($numNormals > 0) 
 	#{
@@ -672,11 +599,35 @@ sub writeObjData()
 	#	print OUTFILE "};\n\n";
 	#}
 	
-	
+	close OUTFILE;
 }
 
-sub endOutput()
+sub writeImplementationObjData()
 {
-	#print OUTFILE "}\n";
-	close OUTFILE;
+	my ($file, $dir, $ext) = fileparse($ARGV[1], qr/\.[^.]*/);
+	$headerFilename = $dir . $object . "SymbolGlyph.m";
+
+	open ( OUTFILE, ">$headerFilename" ) || die "Can't create file header: $headerFilename -> exiting\n";
+
+	print OUTFILE "// created from $file.zip with objZip2Header.pl\n";
+	
+	print OUTFILE "#import \"".$object."SymbolGlyph.h\"\n";
+
+	print OUTFILE "IndexedTrianglesGlyph* ".$object."IndexedTrianglesGlyph = NULL;\n\n";
+	
+	print OUTFILE "IndexedTrianglesGlyph* get".$object."IndexedTrianglesGlyph()\n";
+	print OUTFILE "{\n";
+	print OUTFILE "	if(!".$object."IndexedTrianglesGlyph)\n";
+	print OUTFILE "		".$object."IndexedTrianglesGlyph =\n";
+	print OUTFILE "		createIndexedTrianglesGlyph(".$object."Vertices,\n";
+	print OUTFILE " 		".$object."NumVertices,".$object."Indices,\n";
+	print OUTFILE " 		".$object."NumIndices);\n";
+	print OUTFILE "	return ".$object."IndexedTrianglesGlyph\n";
+	print OUTFILE "}";
+	# needed static constant for glDrawArrays
+	#print OUTFILE "#pragma mark - $object\n\n";
+    
+    
+    
+	close OUTFILE;	
 }
